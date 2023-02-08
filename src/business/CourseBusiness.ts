@@ -1,15 +1,21 @@
 import { CourseDatabase } from "../database/CourseDatabase"
+import { CourseDTO } from "../dto/CourseDto"
 import { BadRequestError } from "../errors/BadRequestError"
 import { NotFoundError } from "../errors/NotFoundError"
 import { Course } from "../models/Course"
 import { CourseDB } from "../types"
 
 export class CourseBusiness {
+
+    constructor(
+        private courseDataBase: CourseDatabase,
+        private courseDTO: CourseDTO
+    ){}
     public getCourses = async (input: any) => {
         const { q } = input
 
-        const courseDatabase = new CourseDatabase()
-        const coursesDB = await courseDatabase.findCourses(q)
+        // const courseDatabase = new CourseDatabase()
+        const coursesDB = await this.courseDataBase.findCourses(q)
 
         const courses: Course[] = coursesDB.map((courseDB) => new Course(
             courseDB.id,
@@ -22,18 +28,6 @@ export class CourseBusiness {
 
     public createCourse = async (input: any) => {
         const { id, name, lessons } = input
-
-        if (typeof id !== "string") {
-            throw new BadRequestError("'id' deve ser string")
-        }
-
-        if (typeof name !== "string") {
-            throw new BadRequestError("'name' deve ser string")
-        }
-
-        if (typeof lessons !== "number") {
-            throw new BadRequestError("'lessons' deve ser number")
-        }
 
         if (name.length < 2) {
             throw new BadRequestError("'name' deve possuir pelo menos 2 caracteres")
@@ -49,13 +43,13 @@ export class CourseBusiness {
         if (courseDBExists) {
             throw new BadRequestError("'id' já existe")
         }
-
+        //var q instancia valor pra um novo curso, ou seja criando novo obj
         const newCourse = new Course(
             id,
             name,
             lessons
         )
-
+            //obj onde id armazena a instanciação de 
         const newCourseDB: CourseDB = {
             id: newCourse.getId(),
             name: newCourse.getName(),
@@ -63,48 +57,21 @@ export class CourseBusiness {
         }
 
         await courseDatabase.insertCourse(newCourseDB)
-
-        const output = {
-            message: "Curso registrado com sucesso",
-            course: newCourse
-        }
-
+        const output=this.courseDTO.createCourseOutput(newCourse)
         return output
     }
 
     public editCourse = async (input: any) => {
-        const {
-            idToEdit,
-            newId,
-            newName,
-            newLessons
-        } = input
-
-        if (newId !== undefined) {
-            if (typeof newId !== "string") {
-                throw new BadRequestError("'id' deve ser string")
-            }
-        }
-        
-        if (newName !== undefined) {
-            if (typeof newName !== "string") {
-                throw new BadRequestError("'name' deve ser string")
-            }
+        const {idToEdit, newId,newName,newLessons} = input
 
             if (newName.length < 2) {
                 throw new BadRequestError("'name' deve possuir pelo menos 2 caracteres")
             }
-        }
         
-        if (newLessons !== undefined) {
-            if (typeof newLessons !== "number") {
-                throw new BadRequestError("'lessons' deve ser number")
-            }
-    
             if (newLessons <= 0) {
                 throw new BadRequestError("'lessons' não pode ser zero ou negativo")
             }
-        }
+        
 
         const courseDatabase = new CourseDatabase()
         const courseToEditDB = await courseDatabase.findCourseById(idToEdit)
@@ -119,6 +86,7 @@ export class CourseBusiness {
             courseToEditDB.lessons
         )
 
+        //se newId for verdadeiro(foi passado), course.setId(altera o valor de id)
         newId && course.setId(newId)
         newName && course.setName(newName)
         newLessons && course.setLessons(newLessons)
